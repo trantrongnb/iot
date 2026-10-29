@@ -1,0 +1,10 @@
+.DS_Store
+**/secrets.h
+.env
+.env.*
+!.env.example
+build/
+.pio/
+*.bin
+*.elf
+*.map

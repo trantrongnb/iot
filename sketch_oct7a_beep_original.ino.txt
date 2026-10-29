@@ -1,0 +1,86 @@
+#include <Arduino.h>
+#include <ESP_I2S.h>
+#include <math.h>
+
+#define I2S_BCLK 41
+#define I2S_LRC  42
+#define I2S_DOUT 47
+
+#define SAMPLE_RATE 44100
+
+I2SClass I2S;
+
+int16_t buffer[256 * 2];
+float phase = 0.0;
+
+// Phát âm thanh BÍP
+void beep(int frequency, int durationMs)
+{
+  float step = 2.0 * PI * frequency / SAMPLE_RATE;
+  int totalSamples = SAMPLE_RATE * durationMs / 1000;
+  int generated = 0;
+
+  while (generated < totalSamples)
+  {
+    int frames = min(256, totalSamples - generated);
+
+    for (int i = 0; i < frames; i++)
+    {
+      int16_t sample = (int16_t)(sin(phase) * 3000);
+
+      phase += step;
+
+      if (phase >= 2.0 * PI)
+        phase -= 2.0 * PI;
+
+      buffer[i * 2]     = sample;
+      buffer[i * 2 + 1] = sample;
+    }
+
+    I2S.write(
+      (uint8_t*)buffer,
+      frames * 2 * sizeof(int16_t)
+    );
+
+    generated += frames;
+  }
+
+  // Gửi mẫu zero để ngắt tiếng
+  memset(buffer, 0, sizeof(buffer));
+  I2S.write((uint8_t*)buffer, sizeof(buffer));
+}
+
+void setup()
+{
+  Serial.begin(115200);
+
+  I2S.setPins(I2S_BCLK, I2S_LRC, I2S_DOUT);
+
+  if (!I2S.begin(
+        I2S_MODE_STD,
+        SAMPLE_RATE,
+        I2S_DATA_BIT_WIDTH_16BIT,
+        I2S_SLOT_MODE_STEREO))
+  {
+    Serial.println("I2S ERROR");
+    while (1);
+  }
+
+  Serial.println("I2S OK!");
+}
+
+void loop()
+{
+  Serial.println("BIP 1");
+  beep(1000, 200);
+  delay(200);
+
+  Serial.println("BIP 2");
+  beep(1000, 200);
+  delay(200);
+
+  Serial.println("BIP 3");
+  beep(1000, 200);
+
+  delay(1000);
+}
